@@ -1,0 +1,45 @@
+---
+title: "JSC370 Lab 12"
+author: "Elaine Dai"
+output: 
+    html_document:
+        toc: TRUE
+        toc_float: TRUE
+---
+
+This is my JSC370 Final Project Website.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, cache = TRUE)
+```
+
+```{r, echo=FALSE, warning=FALSE, include=FALSE}
+# source("Report/Report.Rmd")
+```
+- [Project repository](https://github.com/Vantion24601/JSC370_Final_Project)
+
+- [Data used](https://github.com/Vantion24601/JSC370_Final_Project/tree/main/data)
+
+- [PDF report](https://raw.githubusercontent.com/Vantion24601/JSC370_Final_Project/main/Report/Report.pdf)
+
+- [Video demonstration]()
+
+
+## Showcasing plots {.tabset}
+
+### Figure 1
+
+```{r echo=FALSE, warning=FALSE}
+
+```
+
+### Figure 2
+
+```{r echo=FALSE, warning=FALSE}
+
+```
+
+
+
+
+
