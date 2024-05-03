@@ -1,5 +1,6 @@
 ---
-title: "Final Report"
+title: "Identifying Characteristics of High-salary Data Science Related Job Postings"
+subtitle: "JSC370H1 Final Report"
 author: "Elaine Dai"
 date: "2024-04-30"
 output:
@@ -17,7 +18,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 In the rapidly evolving job market, the role of a data science related job has emerged as a pivotal position within companies. As a student approaching the completion of data science degree, I am preparing to step into the professional world, and get interested in understanding the landscape of data science related positions. Therefore, this project aims to dig into the characteristics of data analyst related job postings, with a specific focus on uncovering the markers that signal high-salary opportunities. By digging into this, we can gain insights into the attributes and qualifications that employers value most for.
 
-This project seeks to answer the question: "What characteristics of data science related job postings are indicative of high-salary positions?". The dataset utilized in this analysis was acquired from Kaggle, specifically from the "LinkedIn Job Postings" dataset by user Arsh Kon [here](https://www.kaggle.com/datasets/arshkon/linkedin-job-postings/data). This dataset comprises a wide range of United States job postings on LinkedIn in 2023, including various fields such as job title, company, location, salary, and more.
+This project seeks to answer the question: "What characteristics of data science related job postings are indicative of high-salary positions?". The dataset utilized in this analysis was acquired from Kaggle, specifically from the "LinkedIn Job Postings" dataset by user Arsh Kon[1]. This dataset comprises a wide range of United States job postings on LinkedIn in 2023, including various fields such as job title, company, location, salary, and more.
 
 Some columns that are deemed relevant to the topic are:
 
@@ -65,7 +66,7 @@ library(rsample)
 jobs <- read.csv("../data/job_postings.csv")
 ```
 
-### 2.1 Data Cleaning and Wrangling
+## 2.1 Data Cleaning and Wrangling
 
 Upon acquiring the dataset, I examined the structure of the data: the types of each column and any missing values. The target attribute is the salary, so this preliminary examination is focused mainly on salary. The examination revealed that salary information was provided either in a range format (minimum and maximum salary) or a median value (med_salary), and not all entries had a valid salary. To address this, a new column, salary, was created by averaging the min_salary and max_salary values for each entry where med_salary was missing. 2087(the average number of work hours in a year) is multiplied to the hourly based salary, in order to convert salary information from an hourly to a yearly basis for those entries listed with hourly rates. Another modification involved extracting the state information from the column location, for future analysis.
 
@@ -102,7 +103,7 @@ colSums(is.na(cleaned_data))
 cleaned_data
 ```
 
-### 2.2 EDA
+## 2.2 EDA
 
 ##### Summary Statistics: salary
 
@@ -116,41 +117,55 @@ The function first groups the data by the categorical variable provided, summari
 
 ##### Text Mining: description
 
-Finally, an additional analysis was incorporated by utilizing text mining techniques to dissect job descriptions. The tidytext package was used to tokenize the text, allowing for the identification and visualization of the most frequent tokens. Common stopwords were removed, including universally frequent English words and additional terms like "years", "will", "work", "job" and "role".etc which are expected to be recurrent in job descriptions but offer little analytical value. Additionally, any tokens containing numbers were filtered out to focus purely on textual data. The text data was then tokenized into bigrams and trigrams to facilitate a granular analysis of phrase patterns within the job descriptions. Word/phrase count bar plots and a word cloud were created for visualization.
+An additional analysis was incorporated by utilizing text mining techniques to dissect job descriptions. The tidytext package was used to tokenize the text, allowing for the identification and visualization of the most frequent tokens. Common stopwords were removed, including universally frequent English words and additional terms like "years", "will", "work", "job" and "role".etc which are expected to be recurrent in job descriptions but offer little analytical value. Additionally, any tokens containing numbers were filtered out to focus purely on textual data. The text data was then tokenized into bigrams and trigrams to facilitate a granular analysis of phrase patterns within the job descriptions. Word/phrase count bar plots and a word cloud were created for visualization.
 
-### 2.3 Model Building and Preparation
+## 2.3 Model Preparation
 
-##### Dataset Preparation
-
-For preparing the data specifically for modeling purposes, I concentrated on our main interest, full-time job postings only. I also modified the "state" column to classify the states with too few observations into "other" to avoid splitting error. Initially, a unique identifier (doc_id) was assigned to each job posting to facilitate individual tracking through subsequent steps.
+For preparing the data specifically for modeling purposes, I concentrated on our main interest, full-time job postings only. I also modified the "state" column to classify the states with too few observations into "other" to avoid splitting error. A unique identifier (doc_id) was assigned to each job posting to facilitate individual tracking through subsequent steps.
 
 A significant portion of this phase involved processing the text data within job descriptions using TF-IDF (Term Frequency-Inverse Document Frequency). TF-IDF is a statistical measure used to evaluate the importance of a word to a document in a collection or corpus. The importance increases proportionally to the number of times a word appears in the document but is offset by the frequency of the word in the corpus. This method was chosen because it effectively highlights the most relevant words in job descriptions, which are likely indicative of the skills and responsibilities valued in higher-paying roles. Words typical across many job descriptions or irrelevant (such as common English stopwords and numbers) were filtered out to refine the analysis.
 
 Following the computation of TF-IDF scores, these were aggregated for each document, then pivoted to create a wide-format dataset where each row represents a job posting and each column represents a word's TF-IDF score. This data was then merged back with the original dataset, preserving the essential variables such as salary, state, and experience level, and ensuring that all categorical variables were appropriately encoded as factors for analytical consistency.
 
+Another crucial step undertaken was the normalization of the dependent variable, `Salary`. Given the significant variance observed in salary data, with a mean salary of $124,343.88, and considering the scale disparity between salary figures and the TF-IDF values (which are often less than 0.02), it was necessary to transform the salary variable to stabilize variance and bring it closer in scale to other predictors. This normalization aids in enhancing the performance of the predictive models, particularly those that assume or benefit from normality in the input distribution. The transformation applied was a logarithmic transformation, specifically `log(Salary + 1)`, which is commonly used to manage skewed data by compressing the scale of the salary distribution.
+
 The final dataset was split into training and test sets, with 70% of the data allocated for training to build the predictive models and 30% reserved for testing to evaluate model performance.
 
 
 
-##### Modeling
+## 2.4 Modeling Building
 
+In this section, we delve into the specifics of the machine learning models developed to predict high-salary data science jobs. The following models were constructed using various statistical and machine learning approaches to capture different aspects of the data and evaluate their predictive performance. All models used `Salary` as the dependent variable, and all other features(`state`, `formatted_experience_level` and words tf-idf values) in the dataset as predictors. A Variable Importance graph was plotted for every machine learning model to identify which features contributed most to predicting Salary and provide insight into the target question.
 
+##### 2.4.1 Linear Regression
 
+The baseline model is a simple Linear Regression, serving as a benchmark for more complex models. Linear regression was chosen for its interpretability and efficiency in establishing a linear relationship between the independent variables and the target variable, Salary. The model was specified as: `lr_model <- lm(Salary ~ ., data = train)`.
 
+##### 2.4.2 Regression Tree
 
+A Regression Tree was built to handle non-linear relationships and interactions between variables better than linear models. The initial tree was constructed using the rpart package with an ANOVA method, setting a complexity parameter (cp) for pruning: `tree_model <- rpart(Salary ~ ., method = 'anova', control = rpart.control(cp=0.01), data = train)`. Optimal pruning was conducted based on the smallest cross-validated error to avoid overfitting, using the following code to determine the best cp and prune the tree.
 
+##### 2.4.3 Bagging
 
+The Bagging model, implemented via the `randomForest` package, aims to reduce variance and prevent overfitting by combining the predictions of multiple decision trees constructed on different subsets of the dataset: `bagging_model <- randomForest(Salary ~ ., data = train, importance = TRUE, na.action = na.omit)`.
 
+##### 2.4.4 Random Forest
 
+An extension of the bagging technique, the Random Forest model, uses a similar ensemble method but introduces more randomness by selecting random subsets of features for splitting in each tree: `rf_model <- randomForest(Salary ~ ., data = train, mtry = sqrt(ncol(train)), importance = TRUE, na.action = na.omit)`. The number of variables tried at each split, mtry, was set to the square root of the total number of variables in the dataset.
 
+##### 2.4.5 Gradient Boosting
+Gradient Boosting was employed to build a predictive model in a stage-wise manner. It optimizes a loss function over weak learners (trees), with each subsequent tree correcting errors made by the previous ones. The `gbm` package was used for the implementation of this model: `boosting_model <- gbm(Salary ~ ., data = train, distribution = "gaussian", n.trees = 1000, interaction.depth = 1, shrinkage = 0.01, cv.folds = 5)`. The model parameters included the number of trees (n.trees), interaction depth, and the shrinkage rate, which controls the learning rate of the procedure. A grid search was applied on the shrinkage parameter for the best training performance.
 
+##### 2.4.6 XGBoost
+
+Finally, the XGBoost model, an advanced implementation of gradient boosting, was utilized for its performance and speed. This model was tuned using a grid search approach over multiple hyperparameters. The `caret` package facilitated the training control and grid search to find the optimal settings for parameters such as learning rate (`eta`), tree depth (`max_depth`), and others.
 
 
 
 
 # 3. Results
 
-### 3.1 EDA Results
+## 3.1 EDA Results
 
 After cleaning and wrangling, the cleaned dataset contains 297 observations and 6 variables with no missing values. The summary statistics for the numeric variable salary and the exploratory plots are given below.
 
@@ -164,21 +179,24 @@ salary_summary <- cleaned_data |>
             max = max(salary))
 
 salary_summary_tidy <- pivot_longer(salary_summary, cols = everything(), names_to = "Statistic", values_to = "Value")
-kable(salary_summary_tidy)
+# kable(salary_summary_tidy, caption = "Table 1: Summary Statistics for Salaries")
+kable(salary_summary_tidy, booktabs = TRUE, position = "H") |>
+  kable_styling(full_width = FALSE) |>
+  footnote(general = "Table 1: Summary Statistics for Salaries", general_title = "")
 ```
 
 
 
 
 ```{r echo=FALSE}
-plot_data <- function(data, cat_var) {
+plot_data <- function(data, cat_var, name, caption) {
   count_plot <- data |>
     group_by(!!sym(cat_var)) |>
     summarise(Count = n()) |>
     ggplot(aes(x = reorder(!!sym(cat_var), -Count), y = Count)) +
-    geom_bar(stat = "identity", fill = "#87CEEB", colour = "#00BFFF") +
+    geom_bar(stat = "identity", fill = "steelblue", colour = "#00BFFF") +
     theme_minimal() +
-    labs(title = paste("Count by", cat_var), x = cat_var, y = "Count") +
+    labs(title = paste("Distribution of ", name), x = cat_var, y = "Count") +
     coord_flip()
   
   
@@ -187,37 +205,38 @@ plot_data <- function(data, cat_var) {
     ggplot(aes(x = !!sym(cat_var), y = salary, fill = !!sym(cat_var))) +
     geom_boxplot() +
     theme_minimal() +
-    labs(title = paste("Salary Distribution by", cat_var), x = cat_var, y = "salary") +
+    labs(title = paste("Salary Distribution by", name), x = cat_var, y = "salary") +
     theme(legend.position = "none") +
     coord_flip()
   
-  grid.arrange(count_plot, salary_plot, nrow = 1)
+  grid.arrange(count_plot, salary_plot, nrow = 1, bottom = caption)
 }
 ```
 
+
+
+```{r echo=FALSE}
+plot_data(cleaned_data, "formatted_work_type", "Work Type", "Figure 1: EDA for Work Type")
+```
 In the work type category, full-time positions dominate the job market. Internships, part-time and temporary jobs are very less frequent. Salary-wise, full-time positions also lead with higher pay. Contract roles offer lower median salaries than full-time positions but are still well above temporary, part-time, and internship categories, which present the lowest pay. This is a predictable trend.
 
 ```{r echo=FALSE}
-plot_data(cleaned_data, "formatted_work_type")
+plot_data(cleaned_data, "formatted_experience_level", "Experience Level", "Figure 2: EDA for Experience Level")
 ```
+
 
 Regarding experience levels, mid-senior jobs are the most abundant, entry-level positions and associate follow in frequency. However, the high-ranking executive and director positions are rare, which reflects their specialized and leadership-focused nature. 
 
 Salaries increase notably with experience. Top-tier roles like executives enjoy the highest salaries, and understandably, those at the entry-level earn the least. This gradient in pay is expected, aligning with the increased responsibilities and expertise required at higher levels.
 
+
 ```{r echo=FALSE}
-plot_data(cleaned_data, "formatted_experience_level")
+plot_data(cleaned_data, "state", "State", "Figure 3: EDA for State")
 ```
+
+
 
 A state-wise look at job counts places California at the front, suggesting a bustling job market.  New York and Texas also show significant job availability. Salaries by state reveal disparities that could be influenced by living costs or industry concentration, with places like California and New York showing higher median salaries. Other states exhibit a broad range of salaries, pointing to diverse economic landscapes and job sectors within each state.
-
-```{r echo=FALSE}
-plot_data(cleaned_data, "state")
-```
-
-
-
-This bar graph displays the most frequently occurring individual words within job descriptions. The words with highest frequencies includes "data", "experience", "business", "team", "skills", highlighting the general importance of these aspects in the professional environment.
 
 
 ```{r echo=FALSE}
@@ -233,14 +252,22 @@ tokens <- cleaned_data |>
 tokens |>
   slice_max(order_by = n, n = 20) |>
   ggplot(aes(reorder(word, n), y = n)) +
-  labs(title = "10 words in job descriptions with top frequency", y = "Count", x = "Word") +
-  geom_bar(stat = "identity", fill = "#87CEEB", colour = "#00BFFF") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(y = "Count", 
+       x = "Word",
+       caption = "Figure 4: 10 words in job descriptions with top frequency",
+       title = "Top 10 Words") +
+  geom_bar(stat = "identity", fill = "steelblue", colour = "#00BFFF") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        plot.caption = element_text(hjust = 0.5, size = 10)) +
   coord_flip()
 
 wordcloud(tokens$word, tokens$n, max.words = 100)
-
+mtext("Figure 5: Word Cloud of Single Terms", side = 1, line = 3, cex = 0.8, font = 3)
 ```
+
+
+This bar graph displays the most frequently occurring individual words within job descriptions. The words with highest frequencies includes "data", "experience", "business", "team", "skills", highlighting the general importance of these aspects in the professional environment.
+
 
 
 
@@ -267,52 +294,62 @@ tokens_trigram <- cleaned_data |>
 
 
 
-The bigram (two-word phrase) frequency graph sheds light on common pairings such as "machine learning", "base salary", "computer science" and "problem solving". These reflect specific skills, compensation expectations, and competencies valued in the job market. The relatively even distribution suggests no overwhelming focus on a particular phrase but instead a variety of important attributes and benefits. Noticeably gender and equality concepts are brought up frequently, indicating the significant emphasis on diversity and inclusion within the job market.
-
-
 ```{r echo=FALSE}
 tokens_bigram |>
   slice_max(order_by = n, n = 20) |>
   ggplot(aes(reorder(ngram, n), y = n)) +
-  labs(title = "10 bi-grams in job descriptions with top frequency",y = "Count", x = "Bigram") +
-  geom_bar(stat = "identity", fill = "#87CEEB", colour = "#00BFFF") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(caption = "Figure 6: 10 bi-grams in job descriptions with top frequency", 
+       title = "Top 10 bi-grams",
+       y = "Count", x = "Bigram") +
+  geom_bar(stat = "identity", fill = "steelblue", colour = "#00BFFF") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        plot.caption = element_text(hjust = 0, size = 10)) +
   coord_flip()
 ```
 
-The trigram (three-word phrase) bar graph reveals frequent phrases with a more contextual understanding, such as 'equal opportunity employer', which denotes a commitment to workplace equality. The prevalence of phrases like 'race color religion', and 'gender identity' points to a focus on diversity and inclusion in hiring practices.
-
+The bigram (two-word phrase) frequency graph sheds light on common pairings such as "machine learning", "base salary", "computer science" and "problem solving". These reflect specific skills, compensation expectations, and competencies valued in the job market. The relatively even distribution suggests no overwhelming focus on a particular phrase but instead a variety of important attributes and benefits. Noticeably gender and equality concepts are brought up frequently, indicating the significant emphasis on diversity and inclusion within the job market.
 
 ```{r echo=FALSE}
 tokens_trigram |>
   slice_max(order_by = n, n = 20) |>
   ggplot(aes(reorder(ngram, n), y = n)) +
-  labs(title = "10 tri-grams in job descriptions with top frequency",y = "Count", x = "Trigram") +
-  geom_bar(stat = "identity", fill = "#87CEEB", colour = "#00BFFF") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  labs(caption = "Figure 7: 10 tri-grams in job descriptions with top frequency",
+       title = "Top 10 tri-grams",
+       y = "Count", x = "Trigram") +
+  geom_bar(stat = "identity", fill = "steelblue", colour = "#00BFFF") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        plot.caption = element_text(hjust = -1, size = 10))+
   coord_flip()
 ```
 
 
+The trigram (three-word phrase) bar graph reveals frequent phrases with a more contextual understanding, such as 'equal opportunity employer', which denotes a commitment to workplace equality. The prevalence of phrases like 'race color religion', and 'gender identity' points to a focus on diversity and inclusion in hiring practices.
 
-### 3.2 Model Results
 
 
-```{r echo=FALSE}
+## 3.2 Model Results
+
+##### 3.2.1 Evaluating Metrics
+
+```{r data preparation for modeling, echo=FALSE}
 full_time_data <- cleaned_data |>
   filter(formatted_work_type == "Full-time") |>
   group_by(state) |>
   mutate(
     Count = n(),
-    state = ifelse(Count <= 2, "Other", as.character(state))
+    state = ifelse(Count <= 2, "Other", as.character(state)),
+    Salary = salary
   ) |>
   ungroup() |>
-  select(-Count, -title, -formatted_work_type) |>
+  select(-Count, -title, -formatted_work_type, -salary) |>
   mutate(doc_id = row_number(),
          state = as.character(state),
          formatted_experience_level = as.character(formatted_experience_level))
 ```
 
+```{r}
+# write.csv(full_time_data|>select(-description), "full_time_data.csv", row.names = FALSE)
+```
 
 
 ```{r TF-IDF, echo=FALSE}
@@ -343,18 +380,18 @@ filtered_tf_idf_wide <- select(tf_idf_wide, c(doc_id, names(top_words)))
 
 # Join this back with the original full_time_data to include other variables
 model_data <- full_time_data |>
-  select(doc_id, salary, state, formatted_experience_level) |>
+  select(doc_id, Salary, state, formatted_experience_level) |>
   left_join(filtered_tf_idf_wide, by = "doc_id")
 ```
 
 
 ```{r split data, echo=FALSE}
-# Prepare the final dataset by encoding categorical variables
+# Normalize Salary and prepare the final dataset
 final_data <- model_data |>
   mutate(state = as.factor(state),
          formatted_experience_level = as.factor(formatted_experience_level),
-         Salary = salary.x) |>
-  select(-salary.x, -doc_id)
+         Salary = log(Salary + 1)) |>
+  select(-doc_id)
 
 # Splitting the Data into Training and Testing Sets
 set.seed(123)
@@ -371,20 +408,30 @@ library(rpart.plot)
 library(randomForest)
 library(gbm)
 library(xgboost)
+library(caret)
 ```
 
-
+```{r mse helper, echo=FALSE}
+calculate_mse <- function(model, data) {
+  predictions <- predict(model, newdata = data)
+  # mean((exp(predictions) - exp(data$Salary))^2)
+  # print(mean((data$Salary - predictions)^2))
+  # print(data.frame(s = exp(data$Salary) - 1, p = exp(predictions) - 1))
+  # plot(exp(data$Salary) - 1, exp(predictions) - 1)
+  mean((data$Salary - predictions)^2)
+  # data.frame(s = data$Salary, p = predictions)
+}
+```
 
 ```{r baseline: linear regression, echo=FALSE}
-lm_model <- lm(Salary ~ ., data = train)
+lr_model <- lm(Salary ~ ., data = train)
 ```
 
 ```{r regression tree, echo=FALSE}
+set.seed(123)
 tree_model <- rpart(Salary ~ ., method = 'anova', control = rpart.control(cp=0.01), data = train)
-plotcp(tree_model)
-```
-```{r include=FALSE}
-tree_model$cptable
+# plotcp(tree_model)
+# tree_model$cptable
 ```
 
 
@@ -392,95 +439,253 @@ tree_model$cptable
 # Identify optimal complexity parameter
 optimal_cp <- tree_model$cptable[which.min(tree_model$cptable[,"xerror"]), "CP"]
 tree_pruned <- prune(tree_model, cp = optimal_cp)
-rpart.plot(tree_pruned)
+# rpart.plot(tree_pruned)
 ```
 
 
 
 ```{r bagging, echo=FALSE}
+set.seed(123)
 bagging_model <- randomForest(Salary ~ ., data = train, importance = TRUE, na.action = na.omit)
-par(mar = c(6, 8, 4, 2) + 0.1)
-par(cex.axis = 0.7)
-varImpPlot(bagging_model, main = "Variable Importance", cex = 0.8)
 ```
 
 
+```{r random forest, echo=FALSE}
+set.seed(123)
+rf_model <- randomForest(Salary ~ ., data = train, mtry = sqrt(ncol(train)), importance = TRUE, na.action = na.omit)
+```
 
 
-```{r}
-calculate_mse <- function(model, data) {
-  predictions <- predict(model, newdata = data)
-  mean((data$Salary - predictions)^2)
-  # data.frame(s = data$Salary, p = predictions)
+```{r boosting grid search, include=FALSE, message=FALSE}
+set.seed(123)
+lambdas <- c(0.01,0.1,0.3)
+mses <- numeric(3)
+names(mses) <- lambdas
+
+for (lambda in lambdas) {
+  boost <- gbm(
+    Salary ~ ., 
+    data = train, 
+    distribution = "gaussian",
+    n.trees = 1000,
+    shrinkage = lambda,
+    cv.folds = 5
+  )
+  pred <- predict(boost, train, n.trees = 1000, type = "response")
+  mses[as.character(lambda)] <- calculate_mse(boost, train)
 }
+
+data.frame(shrinkage = lambdas, mse = mses)
+
 ```
 
-```{r eval=FALSE}
-calculate_mse(tree_pruned, test)
+
+```{r boosting model, echo=FALSE}
+set.seed(123)
+boosting_model <- gbm(Salary ~ ., data = train, distribution = "gaussian", n.trees = 1000, interaction.depth = 1, shrinkage = 0.01, cv.folds = 5)
 ```
 
 
-```{r, eval=FALSE}
-mse_lm <- calculate_mse(lm_model, test)
+
+
+```{r xgboost, include=FALSE, message=FALSE, warning=FALSE}
+grid <- expand.grid(eta = c(0.01,0.1,0.3), 
+                    nrounds = (1:10)*50,
+                    max_depth = c(1, 3, 5, 7),
+                    gamma = 0,
+                    colsample_bytree = 0.6,
+                    subsample = 1,
+                    min_child_weight = 1)
+
+cv_control <- trainControl(method = "cv", number = 10, search = "grid")
+
+set.seed(123)
+xgboost_model <- caret::train(
+  Salary ~ .,
+  data = train,
+  method = "xgbTree",
+  trControl = cv_control,
+  tuneGrid = grid,
+  metric = "RMSE",
+  verbosity = 0
+)
+```
+
+
+```{r mse comparison, echo=FALSE, message=FALSE, warning=FALSE}
+mse_lr <- calculate_mse(lr_model, test)
 mse_tree_pruned <- calculate_mse(tree_pruned, test)
 mse_bagging <- calculate_mse(bagging_model, test)
 mse_rf <- calculate_mse(rf_model, test)
-mse_boosting <- calculate_mse(boosting_model, test, n.trees = 1000)
+mse_boosting <- calculate_mse(boosting_model, test)
 mse_xgboost <- calculate_mse(xgboost_model, test)
+```
 
-mse_comparison <- data.frame(
+```{r include=FALSE}
+# train_preds <- predict(rf_model, newdata = train)
+# test_preds <- predict(rf_model, newdata = test)
+# rf_train <- data.frame(salary = exp(train$Salary) - 1, prediction = exp(train_preds) - 1, state = train$state)
+# write.csv(rf_train, "rf_train.csv", row.names = FALSE)
+# rf_test <- data.frame(salary = exp(test$Salary) - 1, prediction = exp(test_preds) - 1, state = test$state)
+# write.csv(rf_test, "rf_test.csv", row.names = FALSE)
+```
+
+
+```{r r suqared helper, echo=FALSE}
+calculate_r_squared <- function(model, data) {
+  predictions <- predict(model, newdata = data)
+  ss_res <- sum((data$Salary - predictions) ^ 2)
+  ss_tot <- sum((data$Salary - mean(data$Salary)) ^ 2)
+  r_squared <- 1 - (ss_res / ss_tot)
+  return(r_squared)
+}
+```
+
+
+```{r model results comparison, echo=FALSE, message=FALSE, warning=FALSE}
+r2_lr <- calculate_r_squared(lr_model, test)
+r2_tree_pruned <- calculate_r_squared(tree_pruned, test)
+r2_bagging <- calculate_r_squared(bagging_model, test)
+r2_rf <- calculate_r_squared(rf_model, test)
+r2_boosting <- calculate_r_squared(boosting_model, test)
+r2_xgboost <- calculate_r_squared(xgboost_model, test)
+
+model_comparison <- data.frame(
   Method = c("Linear Regression", "Regression Tree", "Bagging", "Random Forest", "Boosting", "XGBoost"),
-  MSE = c(mse_lm, mse_tree_pruned, mse_bagging, mse_rf, mse_boosting, mse_xgboost)
+  MSE = c(mse_lr, mse_tree_pruned, mse_bagging, mse_rf, mse_boosting, mse_xgboost),
+  R_squared = c(r2_lr, r2_tree_pruned, r2_bagging, r2_rf, r2_boosting, r2_xgboost)
 )
 
-mse_comparison
+# kable(model_comparison, caption = "Table 2: Evaluating Metrics for Model Comparison")
+kable(model_comparison, booktabs = TRUE, position = "H") |>
+  kable_styling(full_width = FALSE) |>
+  footnote(general = "Table 2: Evaluating Metrics for Model Comparison", general_title = "")
+
+```
+
+
+In the evaluation of predictive models for determining high-salary positions within data science fields, a variety of advanced statistical techniques were employed.  The models' performances were measured primarily using Mean Squared Error (MSE) and R-squared values, which are standard metrics for regression analysis. 
+
+Linear Regression and Regression Tree:
+The baseline model, Linear Regression model has the highest MSE (5.25227), which indicates that it was the least accurate model in predicting the salary. Regression Tree showed a considerable improvement over Linear Regression, with an MSE of 0.32731. However, it still faced limitations due to its simpler, hierarchical decision-making structure, which may not capture all the nuances in the data. Linear Regression and Regression Tree models demonstrated inadequate fit, also indicated by their negative R-squared values of -16.488 and -0.089, respectively. This suggests that these models were outperformed by a trivial model that simply predicts the mean salary, indicating a poor explanatory power and lack of fit to the variance within the salary data.
+
+Ensemble Methods – Bagging, Random Forest, and Boosting:
+Conversely, the ensemble methods, specifically Bagging and Random Forest, showed substantial improvements in predictive accuracy. The MSEs for Bagging (0.21406), Random Forest (0.19573), and Boosting (0.21711) were much lower, reflecting more accurate and reliable predictions. Notably, the Random Forest model achieved the lowest MSE, underscoring its robustness and effectiveness in handling diverse and complex datasets. These models achieved positive R-squared values of 0.287,  0.348, and 0.277, respectively, indicating a moderate fit to the data. Such improvements underscore the value of ensemble learning in handling complex datasets with intricate variable interactions and high variability.
+
+XGBoost:
+The XGBoost model, a gradient boosting framework known for its efficiency and effectiveness, recorded an R-squared of 0.248, which, while lower than other ensemble methods, still represents an improvement over the basic regression approaches. This model's ability to handle various data shapes and types, along with its robustness to overfitting, makes it a viable option for further tuning and exploration.
+
+
+
+##### 3.2.2 Variable Importance
+
+Analysis of Variable Importance across models highlights critical predictors influencing salary outcomes in the data science domain.
+
+```{r bagging VI, echo=FALSE}
+varImpPlot(bagging_model, main = "Variable Importance in Bagging Model", cex = 0.8)
+x_pos <- grconvertX(0.5, from="ndc")
+y_pos <- grconvertY(0.02, from="ndc")
+text(x_pos, y_pos, "Figure 8: Variable Importance in Bagging Model", cex = 0.8, srt = 0, font = 3, xpd = TRUE)
 ```
 
 
 
+The most influential variables in the Bagging model are: formatted_experience_level, product, engineering, entry, research, role, across, IQ, status and problems.
+In this model, experience level and specific job functions like product development and engineering significantly impacted salary predictions, experiences like research are also emphasized.
 
 
 
-```{r, eval=FALSE}
-tf_idf_numeric <- select(filtered_tf_idf_wide, -doc_id)
 
-# Apply PCA
-pca_result <- prcomp(tf_idf_numeric, center = TRUE, scale. = TRUE)
-
-# View summary of PCA results
-summary(pca_result)
+```{r random forest VI, echo=FALSE}
+varImpPlot(rf_model, main = "Variable Importance in Random Forest Model", cex = 0.8)
+x_pos <- grconvertX(0.5, from="ndc")
+y_pos <- grconvertY(0.02, from="ndc")
+text(x_pos, y_pos, "Figure 9: Variable Importance in Random Forest Model", cex = 0.8, srt = 0, font = 3, xpd = TRUE)
 ```
 
-```{r, eval=FALSE}
-loadings <- pca_result$rotation
-biplot(pca_result)
+Top variables influencing the Random Forest model included: formatted_experience_level, engineering, product, research, state, health, business, information, job and services.
+Similar to the Bagging model, experience level and engineering remain crucial, with the addition of location (state) and sectors (health, business) reflecting regional and industry-specific salary standards.
+
+
+```{r boosting VI prep, include=FALSE}
+importance_data <- summary(boosting_model, n.trees = 1000)
+importance_df <- as.data.frame(importance_data)
+importance_df$Variable <- row.names(importance_df)
+
+top_importance_df <- importance_df |>
+  arrange(desc(rel.inf)) |>
+  slice_max(order_by = rel.inf, n = 20) |>
+  arrange(rel.inf)
+
+top_importance_df$Variable <- factor(top_importance_df$Variable, levels = top_importance_df$Variable)
+# write.csv(top_importance_df |> select(var, rel.inf), "boosting_VI.csv", row.names = FALSE)
 ```
 
-```{r, eval=FALSE}
-k <- 36  # for example, change this based on your scree plot and summary
-tf_idf_pca <- pca_result$x[, 1:k]
 
-# Convert to data frame, if you need to use it further in data processing
-tf_idf_pca_df <- as.data.frame(tf_idf_pca)
-model_data_with_pca <- cbind(full_time_data, tf_idf_pca_df) |> select(-description, -doc_id)
+```{r boosting VI, echo=FALSE}
+ggplot(top_importance_df, aes(x = Variable, y = rel.inf)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(title = "Top 20 Variable Importance in Boosting Model", 
+       caption = "Figure 10: Variable Importance in Boosting Model",
+       x = "", y = "Relative Influence") +
+  theme_minimal() +
+  theme(legend.position = "none",
+        plot.caption = element_text(hjust = 0, size = 10))
 ```
 
-```{r, eval=FALSE}
-lm_pca <- lm(salary ~ ., data = train)
+
+For the Boosting model, the variables with the highest relative influence were: formatted_experience_level, engineering, information, plan, research, required, state, development, systems, and software.
+This model emphasizes the importance of technical roles and planning capabilities, suggesting that strategic positions and comprehensive technical knowledge command higher salaries.
+
+
+
+
+
+```{r xgboost VI, echo=FALSE}
+varimp <- varImp(xgboost_model, scale = FALSE)
+
+varimp_df <- as.data.frame(varimp$importance)
+
+varimp_df$Variable <- rownames(varimp_df)
+
+top_varimp_df <- varimp_df |>
+  arrange(desc(Overall)) |>
+  top_n(20, Overall)
+
+top_varimp_df$Variable <- factor(top_varimp_df$Variable, 
+                                 levels =top_varimp_df$Variable[order(top_varimp_df$Overall)])
+
+ggplot(top_varimp_df, aes(x = Variable, y = Overall)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  coord_flip() +
+  labs(title = "Top 20 Variable Importance in XGBoost", 
+       caption = "Figure 11: Variable Importance in XGBoost",
+       y = "Importance", x = "") +
+  theme_minimal() +
+  theme(axis.text.y = element_text(size = 10),
+        plot.caption = element_text(hjust = 0, size = 10))
+
 ```
 
+The XGBoost model highlighted the following as significant: engineering, , research, services, formatted_experience_level, systems, center, information, development, health, and business.
+Again, technical expertise and sector-specific roles play critical roles, with engineering and research leading the list. Notably, the model distinguishes between different experience levels, directly correlating them with salary variations.
 
 
 
+# 4. Conclusions and Summary
+
+
+This project aimed to discover which aspects of data science job postings correlate with higher salaries. We evaluated various predictive models to determine which method and characteristics most significantly predict high-salary positions. The models ranged from simple Linear Regression to more sophisticated ensemble methods such as Random Forest and Boosting algorithms. Among all the models, Random Forest achieved lowest MSE and highest R squared value, followed by Bagging, Boosting, XGBoost models, and Regression Tree model. All emsemble models outperform the basline Linear Regression model, achieving more than 95% less MSE than the Linear Regression model. 
+
+Across all models, the recurring themes of formatted_experience_level, engineering, and sector-specific knowledge (health, business, information) as pivotal determinants of salary are evident. Some models also leverage emphasis on research experiences and software development skills. These insights align with the broader industry trends where technical proficiency, experience, and industry context are highly valued.
+
+For organizations and professionals in the data science field, focusing on developing skills in these key areas may yield substantial career advancement and compensation benefits. Additionally, the inclusion of state in significant variables suggests regional salary disparities, which organizations must consider when designing compensation packages to attract and retain talent.
+
+Considering the limited data resource and tuning time, the models (especially XGBoost) have the potential to achieve better predicting accuracy, and discover more and closer insight to the target question. 
 
 
 
+# 5. Reference
 
-
-
-# Summary
-
-
-This project aimed to discover which aspects of data science job postings correlate with higher salaries. The exploration of work type, location, and experience level revealed distinct variations in average salaries across different groups. Full-time positions, certain states, and advanced experience levels generally command higher pay. Natural Language Processing (NLP) applied to job descriptions also helped by identifying frequent keywords, bigrams, and trigrams. Dominant terms like 'data', 'experience', and 'business', along with phrases emphasizing 'machine learning' and 'problem-solving', were prominent. Additionally, gender, race and equality concepts were recurrent terms, signifying an ethical emphasis on hiring.
-
-
+[1] Kon, A. (2023, November 5). LinkedIn job postings - 2023. Kaggle. https://www.kaggle.com/datasets/arshkon/linkedin-job-postings/data 

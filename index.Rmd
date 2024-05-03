@@ -1,5 +1,5 @@
 ---
-title: "JSC370 Lab 12"
+title: "JSC370 Final Project"
 author: "Elaine Dai"
 output: 
     html_document:
@@ -7,36 +7,159 @@ output:
         toc_float: TRUE
 ---
 
-This is my JSC370 Final Project Website.
+## Project Introduction
+
+This is Elaine Dai's JSC370 Final Project Website. 
+
+In the rapidly evolving job market, the role of a data science related job has emerged as a pivotal position within companies. As a student approaching the completion of data science degree, I am preparing to step into the professional world, and get interested in understanding the landscape of data science related positions. Therefore, this project aims to dig into the characteristics of data analyst related job postings, with a specific focus on uncovering the markers that signal high-salary opportunities. By digging into this, we can gain insights into the attributes and qualifications that employers value most for.
+
+This project seeks to answer the question: "What characteristics of data science related job postings are indicative of high-salary positions?". The dataset utilized in this analysis was acquired from Kaggle, specifically from the "LinkedIn Job Postings" dataset by user Arsh Kon[1]. This dataset comprises a wide range of United States job postings on LinkedIn in 2023, including various fields such as job title, company, location, salary, and more. In this project, linear regression, regression tree, bagging, random forest, boosting and XGBoost models are trained to predict the salary based on job posting information. And further analysis on variable importance are done to discover characteristics of job postings that significantly contribute to salary variation.
+
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, cache = TRUE)
 ```
 
-```{r, echo=FALSE, warning=FALSE, include=FALSE}
-# source("Report/Report.Rmd")
-```
+To access the project, refer to the following: 
+
 - [Project repository](https://github.com/Vantion24601/JSC370_Final_Project)
 
-- [Data used](https://github.com/Vantion24601/JSC370_Final_Project/tree/main/data)
-
-- [PDF report](https://raw.githubusercontent.com/Vantion24601/JSC370_Final_Project/main/Report/Report.pdf)
+- [PDF report](./Report/Report.pdf)
 
 - [Video demonstration]()
 
+The rest of the website demonstrates three interactive graphs that relate to the project.
 
-## Showcasing plots {.tabset}
+## Interactive plots {.tabset}
 
-### Figure 1
-
-```{r echo=FALSE, warning=FALSE}
-
+```{r message=FALSE, echo=FALSE, warning=FALSE}
+library(tidyverse)
+library(plotly)
+library(widgetframe)
+library(tidytext)
 ```
 
-### Figure 2
+### Job Postings by State
+
+This graph demonstrates the data science related job postings in the U.S. specified by state in the source dataset.
+
+```{r, echo=FALSE, warning=FALSE, include=FALSE}
+full_time <- read.csv("./data/full_time_data.csv")
+```
 
 ```{r echo=FALSE, warning=FALSE}
+by_state <- full_time |> 
+  filter(state != "Other") |>
+  group_by(state) |>
+  summarise(count = n(),
+            avg_salary = mean(Salary))
+```
 
+
+```{r echo=FALSE, warning=FALSE}
+set_map_details <- list(
+  scope = 'usa',
+  projection = list(type = 'albers usa'),
+  showlakes = TRUE,
+  lakecolor = toRGB('steelblue')
+)
+
+
+# Create hover text
+by_state$hover <- with(by_state, paste("State: ", state, '<br>', "Number of Job Postings: ", count, '<br>', "Average Salary: ", avg_salary))
+
+# Create the map
+map <- plot_geo(by_state, locationmode = 'USA-states') |>
+  add_trace(
+    z = ~avg_salary, locations = ~state,
+    hoverinfo = "text",
+    text = ~hover,
+    colors = 'Purples', 
+    marker = list(line = list(color = 'rgb(255,255,255)', width = 2))
+  ) |>
+  colorbar(title = "Average Salary") |>
+  layout(title = 'Job Postings by State', geo = set_map_details)
+
+map
+```
+
+### Variable Importance in Boosting Model
+
+This graph demonstrates the top 20 predictors with highest relative influence specified by the boosting model. The y axis represents the predictors and the x axis represents the corresponding relative influence of the predictors. Higher relative influence suggests that the corresponding predictor variable has a stronger influence on the model's predictions.
+
+```{r echo=FALSE, warning=FALSE}
+boosting_VI <- read.csv("./data/boosting_VI.csv")
+```
+
+```{r echo=FALSE, warning=FALSE}
+colnames(boosting_VI) <- c("variable", "relative_influence")
+boosting_VI <- boosting_VI |>
+  arrange(relative_influence)
+boosting_VI$variable <- factor(boosting_VI$variable, levels = boosting_VI$variable)
+```
+
+
+```{r echo=FALSE, warning=FALSE}
+top20_plot <- ggplot(boosting_VI, aes(x = variable, y = relative_influence, fill = variable)) +
+  geom_col() +
+  coord_flip() +
+  labs(title = "Top 20 Variable Importance in Boosting Model", 
+       caption = "Figure 10: Variable Importance in Boosting Model",
+       x = "", y = "Relative Influence") +
+  theme_minimal() +
+  theme(legend.position = "none",
+        plot.caption = element_text(hjust = 0, size = 10))
+ggplotly(top20_plot)
+```
+
+
+
+### Random Forest Predictions by State
+
+This graph demonstrates the predictions performance of the Random Forest model, the left subplot for the training set and right subplot for the test set. The x axis represents the actual salary values and the y axis represents the predicted salaries from the corresponding datasets. Each dot on the plots represents an individual data point, and the position of the dots on the plot provides a visual representation of the actual salary (x-axis) versus the model-predicted salary (y-axis). Different colors represent various states, the corresponding dots can be hidden by clicking on the legend to help examing if geographic factors influence the prediction discrepancies.
+
+
+
+```{r}
+train_rf <- read.csv("./data/rf_train.csv")
+test_rf <- read.csv("./data/rf_test.csv")
+```
+
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+
+plot_train <- plot_ly(data = train_rf, 
+                      x = ~salary, 
+                      y = ~prediction, 
+                      type = 'scatter', 
+                      mode = 'markers',
+                      text = ~paste("State:", state, "<br>Salary:", salary, "<br>Prediction:", prediction),
+                      hoverinfo = "text", 
+                      color = ~paste("Train: ", state),
+                      sizes = c(20, 50), 
+                      marker = list(opacity = 0.5)) |>
+  layout(title = 'Random Forest Prediction Performance on Training Set',
+         xaxis = list(title = 'Target Salary: Training Set'),
+         yaxis = list(title = 'Prediction: Training Set'))
+
+plot_test <- plot_ly(data = test_rf, 
+                     x = ~salary, 
+                     y = ~prediction, 
+                     type = 'scatter', 
+                     mode = 'markers',
+                     text = ~paste("State:", state, "<br>Salary:", salary, "<br>Prediction:", prediction),
+                     hoverinfo = "text", 
+                     color = ~paste("Test: ", state),
+                     sizes = c(20, 50), 
+                     marker = list(opacity = 0.5)) |>
+  layout(title = 'Random Forest Prediction Performance on Test Set',
+         xaxis = list(title = 'Target Salary: Test Set'),
+         yaxis = list(title = 'Prediction: Test Set'))
+
+
+
+subplot(plot_train, plot_test, nrows = 1, shareX = TRUE, shareY = TRUE, titleX = TRUE) |>
+  layout(title = 'Random Forest Prediction Performance', showlegend = TRUE)
 ```
 
 
