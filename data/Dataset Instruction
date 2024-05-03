@@ -1,0 +1,3 @@
+The original dataset utilised in the analysis report can be acquired at this link: https://www.kaggle.com/datasets/arshkon/linkedin-job-postings/data
+
+The datasets in this folder are intermediate results processed from the original dataset in Report.Rmd, to be used for generating the interactive plots displayed on the website.
